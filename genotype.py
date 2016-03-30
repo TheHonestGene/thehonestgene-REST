@@ -13,8 +13,8 @@ def generate_id():
         if os.path.exists(os.path.join(STORAGE_PATH, '%s.hdf5' % uid)) == False:
             return uid
 
-def upload_genotype(data):
-    id = generate_id()
+def upload_genotype(data,id):
+    #id = generate_id()
     filename = id
     genotype_path = os.path.join(STORAGE_PATH, '%s.hdf5' % filename)
     #data = req.stream.read()

@@ -64,12 +64,12 @@ def check_cloud_provider(provider):
 @hug.post('/id')
 def generate_id():
     '''Generate a unique id for identifiying an analysis run'''
-    return genotype.generate_id()
+    return {'id':genotype.generate_id()}
 
-@hug.post('/genotype')
-def upload_genotype(body:getfile):
+@hug.post('/genotype/{id}')
+def upload_genotype(body:getfile,id):
     '''Upload a genotype'''
-    return genotype.get_genotype_infos(genotype.upload_genotype(body.decode("utf-8")))
+    return genotype.get_genotype_infos(genotype.upload_genotype(body.decode("utf-8"),id))
 
 
 @hug.get('/genotype/{id}')
@@ -195,14 +195,14 @@ def get_genotypes_for_provider(provider,request):
     provider = check_cloud_provider(provider)
     return provider.get_genotypes(request.headers['ACCESS-TOKEN'])
 
-@hug.post('/cloud/{provider}/genome/{id}')
-def transfer_genome(provider,id,request):
+@hug.post('/cloud/{provider}/genome/{genotypeid}/{id}')
+def transfer_genome(provider,genotypeid,id,request):
     '''Uploads genotype data for specified provider'''
     provider = check_cloud_provider(provider)
-    data = provider.get_genotype_data(request.headers['ACCESS-TOKEN'],id)
+    data = provider.get_genotype_data(request.headers['ACCESS-TOKEN'],genotypeid)
     columns = data.columns.values.tolist() 
     data.sort([columns[1],columns[2]],inplace=True)
-    return genotype.get_genotype_infos(genotype.upload_genotype(data.to_csv(sep='\t',index=False,header=False)))
+    return genotype.get_genotype_infos(genotype.upload_genotype(data.to_csv(sep='\t',index=False,header=False),id))
 
 
 def _retrieveTaskState(res,wait=False):
