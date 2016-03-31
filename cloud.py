@@ -5,10 +5,9 @@ import json
 import uuid
 import pandas as pd
 from cryptography.fernet import Fernet
+from settings import DATA_PATH
 
-STORAGE_PATH = '%s/DATA' % os.environ['STORAGE_PATH'] 
-
-SNP_INDEX = pd.read_csv('%s/snps_index.data' % STORAGE_PATH,skiprows=3,delimiter='\t',index_col=0,encoding='utf-8')
+SNP_INDEX = pd.read_csv('%s/snps_index.data' % DATA_PATH,skiprows=3,delimiter='\t',index_col=0,encoding='utf-8')
 
 class CloudResource(object):
 

@@ -1,7 +1,8 @@
 import hug
 import genotype
 import os
-STORAGE_PATH = os.environ['STORAGE_PATH'] 
+import settings
+
 from thehonestgenepipeline import imputation as imp
 from thehonestgenepipeline import ancestry as anc
 from thehonestgenepipeline import riskprediction as risk
@@ -10,15 +11,15 @@ from celery.result import AsyncResult
 import cloud
 import falcon 
 import json
-genotype.STORAGE_PATH = '%s/GENOTYPES/ORIGINAL' % STORAGE_PATH
+import os
+from configparser import ConfigParser
 
+parser = ConfigParser()
+parser.read(settings.OAUTH_CONFIG)
 
 
 WEIGHTS = 'european_weights.hdf5'
 PCS_FILE='hapmap_european_pcs.hdf5' 
-
-
-
 import cgi
 
 @hug.directive()
@@ -48,18 +49,36 @@ def getfile(name='file', request = None,**kwargs):
         # TODO: Raise an error
         pass
 
-# TODO extract celery state endpoint to directive or output formatter 
+# TODO extract celery state endpoint to directive or output formatter
 
-GENOTYPE_PROVIDERS = {'23andMe':cloud.CloudResource('d892eef346313a58fae9340140955cf0','ca3fe941649f96541961f797e5fb0beb','http://localhost:5000/receive_code/','genomes basic names','https://api.23andme.com/1/demo/')}
+def _can_do_oauth(opts):
+    print(opts)
+    return opts['client_secret'] != '' and opts['client_id'] and opts['redirect_url']!='' and opts['scope'] != '' and opts['oauth_url'] != ''
 
+def _retrieve_gentoype_providers(parser):
+    providers = parser.sections()
+    data = {}
+    for provider in providers:
+        provider_dict = {}
+        for option in parser.options(provider):
+            provider_dict[option] = parser.get(provider,option)
+        data[provider] = provider_dict
+    return data
+    
 
+GENOTYPE_PROVIDERS = _retrieve_gentoype_providers(parser)
+OAUTH_PROVIDERS = {}  
+for provider,opts in GENOTYPE_PROVIDERS.items():
+     if _can_do_oauth(opts):
+        OAUTH_PROVIDERS[provider] = cloud.CloudResource(opts['client_secret'],opts['client_id'],opts['redirect_url'],opts['scope'],opts['oauth_url'])
 
+print(OAUTH_PROVIDERS)
 
 def check_cloud_provider(provider):
     '''checks if the provider is available'''
-    if provider not in GENOTYPE_PROVIDERS:
+    if provider not in OAUTH_PROVIDERS:
         raise Exception('Cloud provider %s not found' % provider)
-    return GENOTYPE_PROVIDERS[provider]    
+    return OAUTH_PROVIDERS[provider]    
 
 @hug.post('/id')
 def generate_id():
@@ -132,14 +151,14 @@ def get_prediction_state(task_id,wait=False):
 @hug.get('/pcs')
 def get_pcs_for_population(population=None):
     '''Returns the PCS for a given population'''
-    pcs = _transform_pcs(ancestry.load_pcs_from_file('%s/DATA/%s' % (STORAGE_PATH,PCS_FILE)))
+    pcs = _transform_pcs(ancestry.load_pcs_from_file('%s/%s' % (settings.DATA_PATH,PCS_FILE)))
     if population is not None:
         return pcs[population] 
     return pcs
     
 @hug.get('/plotpcs')
 def get_pcs_forplotting(pc1,pc2):
-   pcs = ancestry.load_pcs_from_file('%s/DATA/%s' % (STORAGE_PATH,PCS_FILE))
+   pcs = ancestry.load_pcs_from_file('%s/%s' % (settings.DATA_PATH,PCS_FILE))
    num_pop = len(pcs['populations'].keys())
    header = ['PC1']
    data =  []
@@ -173,11 +192,7 @@ def _transform_pcs(pcs):
 @hug.get('/cloud')
 def get_available_cloud_providers():
     '''Returns available cloud providers'''
-    return [
-        {'name':'23andMe','logoUrl':'https://api.23andme.com/res/img/logos/icn_logo.b46b629c0c0a.png','description':'23andMe is a privately held personal genomics and biotechnology company based in Mountain View, California. The company is named for the 23 pairs of chromosomes in a normal human cell.','webpage':'https://www.23andme.com','oauthurl':'https://api.23andme.com/authorize/?redirect_uri=http://localhost:5000/receive_code/&response_type=code&client_id=ca3fe941649f96541961f797e5fb0beb&scope=genomes basic names'},
-        {'name':'Opensnps','logoUrl':'https://pbs.twimg.com/profile_images/1561077286/twitter.png','webpage':'https://opensnp.org/','description':'openSNP allows customers of direct-to-customer genetic tests to publish their test results, find others with similar genetic variations, learn more about their results by getting the latest primary literature on their variations, and help scientists find new associations.','oauthurl':''},
-        {'name':'Family Tree DNA','logoUrl':'https://dnaexplained.files.wordpress.com/2013/06/family-tree-dna-logo.jpg?w=584','webpage':'','description':'Family Tree DNA is a division of Gene by Gene, a commercial genetic testing company based in Houston, Texas. Family Tree DNA offers analysis of autosomal DNA, Y-DNA, and mitochondrial DNA to individuals for genealogical purposes.','oauthurl':''},
-        {'name':'Ancestry','logoUrl':'http://c.mfcreative.com/mars/landing/dna/homepage/ancestrydna-logo.png','webpage':'http://dna.ancestry.com/','description':'','oauthurl':''}]
+    return [{'name':provider,'logoUrl':opts.get('logo_url',''),'description':opts.get('description',''),'webpage':opts.get('webpage',''),'clientId':opts.get('client_id'),'redirectUrl':opts.get('redirect_url'),'tokenurl':opts.get('token_url',''),'scope':opts.get('scope',''),'oauthSupported':provider in OAUTH_PROVIDERS} for (provider,opts) in GENOTYPE_PROVIDERS.items()]
     
 
 
