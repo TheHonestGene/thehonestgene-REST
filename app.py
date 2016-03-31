@@ -201,7 +201,7 @@ def get_token_for_provider(provider,request):
     '''Returns access token for specified provider'''
     provider = check_cloud_provider(provider)
     token_result = provider.get_token(request.headers['CODE'])
-    token_result['genotypes'] =  provider.get_genotypes(token_result['access_token'])
+    token_result['userInfo'] =  provider.get_genotypes(token_result['access_token'])
     return token_result     
     
 @hug.get('/cloud/{provider}/genotypes')
