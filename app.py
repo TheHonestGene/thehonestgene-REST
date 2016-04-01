@@ -72,8 +72,6 @@ for provider,opts in GENOTYPE_PROVIDERS.items():
      if _can_do_oauth(opts):
         OAUTH_PROVIDERS[provider] = cloud.CloudResource(opts['client_secret'],opts['client_id'],opts['redirect_url'],opts['scope'],opts['oauth_url'])
 
-print(OAUTH_PROVIDERS)
-
 def check_cloud_provider(provider):
     '''checks if the provider is available'''
     if provider not in OAUTH_PROVIDERS:
@@ -96,6 +94,13 @@ def get_genotype_infos(id):
     '''Retrieve information about a specific genotype'''
     return genotype.get_genotype_infos(id)
     
+
+@hug.post('/imputation/cancel/{task_id}')
+def cancel_imputation(task_id):
+    '''Cancel a running process'''
+    res = imp.imputation.AsyncResult(task_id)
+    res.revoke(terminate=True)
+    return {}
     
 @hug.post('/imputation')
 def run_imputation(id):
@@ -125,6 +130,13 @@ def get_ancestry_state(task_id,wait=False):
     res = anc.analysis.AsyncResult(task_id)
     state = _retrieveTaskState(res,wait)    
     return state
+    
+@hug.post('/ancestry/cancel/{task_id}')
+def cancel_ancestry(task_id):
+    '''Cancel a running ancestry'''
+    res = risk.run.AsyncResult(task_id)
+    res.revoke(terminate=True)
+    return {}
 
 
 @hug.get('/traits')
@@ -133,6 +145,15 @@ def get_available_traits():
     return [{'name':'height','title':'Height','description':'When populations share genetic background and environmental factors, average height is frequently characteristic within the group. Exceptional height variation (around 20% deviation from average) within such a population is sometimes due to gigantism or dwarfism, which are medical conditions caused by specific genes or endocrine abnormalities.'}, 
     {'name':'diabetes','title':'Diabetes','description':'Diabetes mellitus (DM), commonly referred to as diabetes, is a group of metabolic diseases in which there are high blood sugar levels over a prolonged period.[2] Symptoms of high blood sugar include frequent urination, increased thirst, and increased hunger. If left untreated, diabetes can cause many complications.[3] Acute complications include diabetic ketoacidosis and nonketotic hyperosmolar coma.[4] Serious long-term complications include cardiovascular disease, stroke, chronic kidney failure, foot ulcers, and damage to the eyes.'}, 
     {'name':'schizophrenia','title':'Schizophrenia','description':'Schizophrenia is a mental disorder characterized by abnormal social behavior and failure to understand reality.[2] Common symptoms include false beliefs, unclear or confused thinking, hearing voices, reduced social engagement and emotional expression, and a lack of motivation.[2][3] People often have additional mental health problems such as anxiety disorders, major depressive illness or substance use disorder.[4] Symptoms typically come on gradually, begin in young adulthood, and last a long time.['}]
+
+
+
+@hug.post('/riskprediction/cancel/{task_id}')
+def cancel_prediction(task_id):
+    '''Cancel a running prediction'''
+    res = risk.run.AsyncResult(task_id)
+    res.revoke(terminate=True)
+    return {}
 
 @hug.post('/riskprediction/{id}/{trait}')
 def run_prediction(id,trait):
@@ -223,10 +244,10 @@ def transfer_genome(provider,genotypeid,id,request):
 def _retrieveTaskState(res,wait=False):
     state = {'id':res.id,'state':res.state}
     if wait:
-        state['data'] = res.get()
+        state['data'] = res.get(timeout=60)
         state['state'] = res.state
     else:    
         if state['state'] == 'SUCCESS':
-            state['data'] =  res.get()
+            state['data'] =  res.get(no_ack=False)
     return state
     
