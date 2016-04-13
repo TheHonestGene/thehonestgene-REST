@@ -29,6 +29,8 @@ def get_genotype_infos(id):
     data = {}
     try:
         f = h5py.File('%s/%s.hdf5' % (ORIGINAL_GENOTYPE_PATH,id),'r')
+        source = f.attrs.get('source',None)
+        version = f.attrs.get('version',None)
         num_of_snps = 0
         chr_stats = {}
         for i in range(1,23):
@@ -42,11 +44,12 @@ def get_genotype_infos(id):
             chr_stats['Chr%s'%i] = chr_data
         data['chr_stats'] = chr_stats
         data['num_of_snps'] = num_of_snps    
+        data['source'] = source
+        data['version'] = version    
     finally:
         if f:
             f.close()
     return {'genotype':id,'data':data}
-
 
 
 

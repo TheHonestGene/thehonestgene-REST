@@ -12,9 +12,6 @@ import cloud
 import falcon 
 import json
 import os
-
-WEIGHTS = 'european_weights.hdf5'
-PCS_FILE='hapmap_european_pcs.hdf5' 
 import cgi
 
 @hug.directive()
@@ -101,7 +98,7 @@ def get_imputation_state(task_id,wait=False):
 @hug.post('/ancestry')
 def run_ancestry(id):
     '''Start the ancestry'''
-    res = anc.analysis.delay(id,WEIGHTS,PCS_FILE)
+    res = anc.analysis.delay(id,'world')
     return {'id':res.id,'state':res.state}
 
 @hug.get('/ancestry')
@@ -148,16 +145,16 @@ def get_prediction_state(task_id,wait=False):
     return state
 
 @hug.get('/pcs')
-def get_pcs_for_population(population=None):
+def get_pcs_for_population(platform,region='world',population=None):
     '''Returns the PCS for a given population'''
-    pcs = _transform_pcs(ancestry.load_pcs_from_file('%s/%s' % (settings.DATA_PATH,PCS_FILE)))
+    pcs = _transform_pcs(ancestry.load_pcs_from_file('%s/AN_DATA/hapmap_%s_%s_pcs.hdf5' % (settings.DATA_PATH,platform,region)))
     if population is not None:
         return pcs[population] 
     return pcs
     
 @hug.get('/plotpcs')
-def get_pcs_forplotting(pc1,pc2):
-   pcs = ancestry.load_pcs_from_file('%s/%s' % (settings.DATA_PATH,PCS_FILE))
+def get_pcs_forplotting(platform,pc1,pc2,region='world'):
+   pcs = ancestry.load_pcs_from_file('%s/AN_DATA/hapmap_%s_%s_pcs.hdf5' % (settings.DATA_PATH,platform,region))
    num_pop = len(pcs['populations'].keys())
    header = ['PC1']
    data =  []
