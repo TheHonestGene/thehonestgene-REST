@@ -188,7 +188,7 @@ def _transform_pcs(pcs):
 @hug.get('/cloud')
 def get_available_cloud_providers():
     '''Returns available cloud providers'''
-    return [{'name':provider,'logoUrl':opts.get('logo_url',''),'description':opts.get('description',''),'webpage':opts.get('webpage',''),'clientId':opts.get('client_id'),'redirectUrl':opts.get('redirect_url'),'tokenurl':opts.get('token_url',''),'scope':opts.get('scope',''),'oauthSupported':opts.get('has_oauth',False)} for (provider,opts) in settings.GENOTYPE_PROVIDERS.items()]
+    return [{'name':provider,'title':opts.get('title',provider),'logoUrl':opts.get('logo_url',''),'description':opts.get('description',''),'webpage':opts.get('webpage',''),'clientId':opts.get('client_id'),'redirectUrl':opts.get('redirect_url'),'tokenurl':opts.get('token_url',''),'scope':opts.get('scope',''),'oauthSupported':opts.get('has_oauth',False)} for (provider,opts) in settings.GENOTYPE_PROVIDERS.items()]
     
 
 
@@ -209,11 +209,12 @@ def get_genotypes_for_provider(provider,request):
 @hug.post('/cloud/{provider}/genome/{genotypeid}/{id}')
 def transfer_genome(provider,genotypeid,id,request):
     '''Uploads genotype data for specified provider'''
+    source = provider
     provider = check_cloud_provider(provider)
     data = provider.get_genotype_data(request.headers['ACCESS-TOKEN'],genotypeid)
     columns = data.columns.values.tolist() 
     data.sort([columns[1],columns[2]],inplace=True)
-    return genotype.get_genotype_infos(genotype.upload_genotype(data.to_csv(sep='\t',index=False,header=False),id))
+    return genotype.get_genotype_infos(genotype.upload_genotype(data.to_csv(sep='\t',index=False,header=False),id,source))
 
 
 def _retrieveTaskState(res,wait=False):

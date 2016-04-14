@@ -13,12 +13,12 @@ def generate_id():
         if os.path.exists(os.path.join(ORIGINAL_GENOTYPE_PATH, '%s.hdf5' % uid)) == False:
             return uid
 
-def upload_genotype(data,id):
+def upload_genotype(data,id,source=None):
     #id = generate_id()
     filename = id
     genotype_path = os.path.join(ORIGINAL_GENOTYPE_PATH, '%s.hdf5' % filename)
     #data = req.stream.read()
-    impute.convert_genotype_to_hdf5(data,genotype_path)
+    impute.convert_genotype_to_hdf5(data,genotype_path,source)
     #token = self.fernat.encrypt(data)
         #with open(genotype_path, 'wb') as genotype_file:
     #   genotype_file.write(token)
