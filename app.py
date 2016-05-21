@@ -131,10 +131,15 @@ def cancel_prediction(task_id):
     return {}
 
 @hug.post('/riskprediction/{id}/{trait}')
-def run_prediction(id,trait):
+def run_prediction(id,trait,gender=None):
     '''Returns the available traits for risk prediction'''
     # TODO check if trait is available
-    res = risk.run.delay(id,trait)
+    sex = None
+    if gender == 'male':
+        sex = 1
+    elif gender == 'female':
+        sex = 2
+    res = risk.run.delay(id,trait,sex)
     return {'id':res.id,'state':res.state}
 
 @hug.get('/riskprediction')

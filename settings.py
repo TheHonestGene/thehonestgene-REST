@@ -46,7 +46,10 @@ traits = trait_parser.sections()
 for trait in traits:
     trait_dict = {'name':trait}
     for option in trait_parser.options(trait):
-        trait_dict[option] = trait_parser.get(trait,option)
+        if option == 'quantitive':
+            trait_dict[option] = trait_parser.getboolean(trait,option) 
+        else:
+            trait_dict[option] = trait_parser.get(trait,option)
     trait_dict['histogram'] = _get_trait_histogram(trait)
     trait_dict['meanRisk'] = float(np.mean(np.asarray(trait_dict['histogram'][1:])))
     TRAITS.append(trait_dict)
