@@ -9,7 +9,7 @@ from thehonestgenepipeline import riskprediction as risk
 from ancestor.core import ancestry
 from celery.result import AsyncResult
 import cloud
-import falcon 
+import falcon
 import json
 import os
 import cgi
@@ -53,7 +53,7 @@ def check_cloud_provider(provider):
     '''checks if the provider is available'''
     if provider not in OAUTH_PROVIDERS:
         raise Exception('Cloud provider %s not found' % provider)
-    return OAUTH_PROVIDERS[provider]    
+    return OAUTH_PROVIDERS[provider]
 
 @hug.post('/id')
 def generate_id():
@@ -70,23 +70,23 @@ def upload_genotype(body:getfile,id):
 def get_genotype_infos(id):
     '''Retrieve information about a specific genotype'''
     return genotype.get_genotype_infos(id)
-    
 
-@hug.post('/imputation/cancel/{task_id}')
-def cancel_imputation(task_id):
+
+@hug.post('/imputation/{id}/cancel/{task_id}')
+def cancel_imputation(id,task_id):
     '''Cancel a running process'''
     res = imp.imputation.AsyncResult(task_id)
     res.revoke(terminate=True)
     return {}
-    
-@hug.post('/imputation')
+
+@hug.post('/imputation/{id}')
 def run_imputation(id):
     '''Start the imputation process'''
     res = imp.imputation.delay(id)
     return {'id':res.id,'state':res.state}
 
-@hug.get('/imputation')
-def get_imputation_state(task_id,wait=False):
+@hug.get('/imputation/{id}/state/{task_id}')
+def get_imputation_state(id,task_id,wait=False):
     '''Get the current state of the imputation'''
     res = imp.imputation.AsyncResult(task_id)
     state = _retrieveTaskState(res,wait)
@@ -95,21 +95,21 @@ def get_imputation_state(task_id,wait=False):
 
     return state
 
-@hug.post('/ancestry')
+@hug.post('/ancestry/{id}')
 def run_ancestry(id):
     '''Start the ancestry'''
-    res = anc.analysis.delay(id,'world')
+    res = anc.analysis.delay(id,'world',check_population='EUR')
     return {'id':res.id,'state':res.state}
 
-@hug.get('/ancestry')
-def get_ancestry_state(task_id,wait=False):
+@hug.get('/ancestry/{id}/state/{task_id}')
+def get_ancestry_state(id,task_id,wait=False):
     '''Returns the current state of the ancestry analysis'''
     res = anc.analysis.AsyncResult(task_id)
-    state = _retrieveTaskState(res,wait)    
+    state = _retrieveTaskState(res,wait)
     return state
-    
-@hug.post('/ancestry/cancel/{task_id}')
-def cancel_ancestry(task_id):
+
+@hug.post('/ancestry/{id}/cancel/{task_id}')
+def cancel_ancestry(id,task_id):
     '''Cancel a running ancestry'''
     res = risk.run.AsyncResult(task_id)
     res.revoke(terminate=True)
@@ -123,8 +123,8 @@ def get_available_traits():
 
 
 
-@hug.post('/riskprediction/cancel/{task_id}')
-def cancel_prediction(task_id):
+@hug.post('/riskprediction/{id}/cancel/{task_id}')
+def cancel_prediction(id,task_id):
     '''Cancel a running prediction'''
     res = risk.run.AsyncResult(task_id)
     res.revoke(terminate=True)
@@ -137,11 +137,11 @@ def run_prediction(id,trait):
     res = risk.run.delay(id,trait)
     return {'id':res.id,'state':res.state}
 
-@hug.get('/riskprediction')
-def get_prediction_state(task_id,wait=False):
+@hug.get('/riskprediction/{id}/state/{task_id}')
+def get_prediction_state(id,task_id,wait=False):
     '''Returns the current state of the risk prediction analysis'''
     res = risk.run.AsyncResult(task_id)
-    state = _retrieveTaskState(res,wait)    
+    state = _retrieveTaskState(res,wait)
     return state
 
 @hug.get('/pcs')
@@ -149,9 +149,9 @@ def get_pcs_for_population(platform,region='world',population=None):
     '''Returns the PCS for a given population'''
     pcs = _transform_pcs(ancestry.load_pcs_from_file('%s/AN_DATA/hapmap_%s_%s_pcs.hdf5' % (settings.DATA_PATH,platform,region)))
     if population is not None:
-        return pcs[population] 
+        return pcs[population]
     return pcs
-    
+
 @hug.get('/plotpcs')
 def get_pcs_forplotting(platform,pc1,pc2,region='world'):
    pcs = ancestry.load_pcs_from_file('%s/AN_DATA/hapmap_%s_%s_pcs.hdf5' % (settings.DATA_PATH,platform,region))
@@ -174,9 +174,9 @@ def get_pcs_forplotting(platform,pc1,pc2,region='world'):
    value[0] = float(pc1)
    value[-1] = float(pc2)
    data.append(value)
-   return data     
-       
-       
+   return data
+
+
 
 def _transform_pcs(pcs):
     transformed_pcs =  {}
@@ -189,7 +189,7 @@ def _transform_pcs(pcs):
 def get_available_cloud_providers():
     '''Returns available cloud providers'''
     return [{'name':provider,'title':opts.get('title',provider),'logoUrl':opts.get('logo_url',''),'description':opts.get('description',''),'webpage':opts.get('webpage',''),'clientId':opts.get('client_id'),'redirectUrl':opts.get('redirect_url'),'tokenurl':opts.get('token_url',''),'scope':opts.get('scope',''),'oauthSupported':opts.get('has_oauth',False)} for (provider,opts) in settings.GENOTYPE_PROVIDERS.items()]
-    
+
 
 
 @hug.post('/cloud/{provider}/token')
@@ -198,8 +198,8 @@ def get_token_for_provider(provider,request):
     provider = check_cloud_provider(provider)
     token_result = provider.get_token(request.headers['CODE'])
     token_result['userInfo'] =  provider.get_genotypes(token_result['access_token'])
-    return token_result     
-    
+    return token_result
+
 @hug.get('/cloud/{provider}/genotypes')
 def get_genotypes_for_provider(provider,request):
     '''Retrieves genotypes for specified provider'''
@@ -212,7 +212,7 @@ def transfer_genome(provider,genotypeid,id,request):
     source = provider
     provider = check_cloud_provider(provider)
     data = provider.get_genotype_data(request.headers['ACCESS-TOKEN'],genotypeid)
-    columns = data.columns.values.tolist() 
+    columns = data.columns.values.tolist()
     data.sort([columns[1],columns[2]],inplace=True)
     return genotype.get_genotype_infos(genotype.upload_genotype(data.to_csv(sep='\t',index=False,header=False),id,source))
 
@@ -222,8 +222,7 @@ def _retrieveTaskState(res,wait=False):
     if wait:
         state['data'] = res.get(timeout=60)
         state['state'] = res.state
-    else:    
+    else:
         if state['state'] == 'SUCCESS':
             state['data'] =  res.get(no_ack=False)
     return state
-    
