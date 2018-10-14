@@ -1,6 +1,7 @@
 import uuid
 import os
 from imputor.core import impute
+from imputor.core import genotype_parser
 from cryptography.fernet import Fernet
 import h5py
 import pandas as pd
@@ -18,7 +19,7 @@ def upload_genotype(data,id,source=None):
     filename = id
     genotype_path = os.path.join(ORIGINAL_GENOTYPE_PATH, '%s.hdf5' % filename)
     #data = req.stream.read()
-    impute.convert_genotype_to_hdf5(data,genotype_path,source)
+    genotype_parser.convert_genotype_to_hdf5(data,genotype_path,source)
     #token = self.fernat.encrypt(data)
         #with open(genotype_path, 'wb') as genotype_file:
     #   genotype_file.write(token)

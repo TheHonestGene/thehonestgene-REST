@@ -1,0 +1,4 @@
+cryptography==1.0
+falcon==0.3.0
+gunicorn==19.3.0
+h5py==2.5.0
